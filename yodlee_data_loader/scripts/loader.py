@@ -83,7 +83,6 @@ async def fetch_balance(session, account, config, semaphore):
                 if attempt == retries:
                     return {"loginName": login_name, "error": error_message}
                 await asyncio.sleep(1)  # wait 1s before retrying
-    return {"loginName": login_name, "error": "Exhausted retries"}
 
 
 async def main():
