@@ -1,0 +1,6 @@
+{
+  "api_url": "http://api-qa.nmlv.nml.com/v1/tx-dsd-yodlee/historical-balance",
+  "api_key": "your-qa-api-key",
+  "concurrency": 5,
+  "retries": 2
+}
