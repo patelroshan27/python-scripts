@@ -5,19 +5,27 @@ import os
 from datetime import datetime, timedelta
 
 import aiohttp
+from dotenv import load_dotenv
 
+def build_api_url(config):
+    base = config.get("api_base_url") or config.get("api_url", "")
+    endpoint = config.get("api_endpoint", "/v1/tx-dsd-yodlee/historical-balance")
+    if not base:
+        return ""
+    if endpoint in base:
+        return base
+    return base.rstrip("/") + endpoint
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Yodlee Data Loader")
     parser.add_argument("--env", required=True, choices=["qa", "prod"], help="Environment to run the script against")
     return parser.parse_args()
 
-
 def load_config(env):
     config_path = os.path.join(os.path.dirname(__file__), '..', 'config', f'{env}.json')
     try:
         with open(config_path) as f:
-            return json.load(f)
+            config = json.load(f)
     except FileNotFoundError:
         print(f"Error: Configuration file not found at {config_path}")
         exit(1)
@@ -25,6 +33,17 @@ def load_config(env):
         print(f"Error: Could not decode JSON from the configuration file at {config_path}")
         exit(1)
 
+    # Load secrets from env-specific .env file
+    env_path = os.path.join(os.path.dirname(__file__), '..', f'.env.{env}')
+
+    load_dotenv(dotenv_path=env_path, override=True)
+    api_key = os.getenv("API_KEY")
+    if not api_key:
+        print(f"Error: API_KEY not found in {env_path}")
+        exit(1)
+
+    config["api_key"] = api_key
+    return config
 
 def load_accounts():
     accounts_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'accounts.json')
@@ -61,13 +80,14 @@ async def fetch_balance(session, account, config, semaphore):
         "Content-Type": "application/json",
     }
 
-    url = config.get("api_url")
+    url = build_api_url(config)
     retries = config.get("retries", 2)
-
+    verify_ssl = config.get("verify_ssl", True)
+    
     async with semaphore:
         for attempt in range(retries + 1):
             try:
-                async with session.get(url, params=params, headers=headers) as response:
+                async with session.get(url, params=params, headers=headers, ssl=verify_ssl) as response:
                     if response.status == 200:
                         data = await response.json()
                         return {"loginName": login_name, "data": data}
