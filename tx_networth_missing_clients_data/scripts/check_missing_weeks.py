@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import socket
 import threading
 import time
@@ -33,9 +34,35 @@ def iso_weeks_in_year(year: int) -> int:
     return date(year, 12, 28).isocalendar().week
 
 
-def load_config(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+def _load_env_file(path: Path) -> dict:
+    env = {}
+    if not path.exists():
+        return env
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        env[k.strip()] = v.strip().strip('"').strip("'")
+    return env
+
+
+def load_config(env_name: str) -> dict:
+    env_file = Path(".env.prod") if env_name == "prod" else Path(".env.qa")
+    print(f"Loading environment variables from '{env_file}'", flush=True)
+
+    env_vars = _load_env_file(env_file)
+
+    cfg = {
+        "host": env_vars.get("host") or os.getenv("host"),
+        "port": int(env_vars.get("port") or os.getenv("port") or 3306),
+        "user": env_vars.get("user") or os.getenv("user"),
+        "password": env_vars.get("password") or os.getenv("password"),
+        "database": env_vars.get("database") or os.getenv("database") or "tx_data_service",
+    }
+
+    print(f"Configuration loaded for environment '{cfg}'", flush=True)
+    return cfg
 
 
 def get_connection(cfg: dict):
@@ -181,7 +208,7 @@ def main():
     today_iso = date.today().isocalendar()
 
     parser = argparse.ArgumentParser(description="Find missing weekly account summary data")
-    parser.add_argument("--config", default="config/qa.json")
+    parser.add_argument("--env", choices=["qa", "prod"], default="qa")
     parser.add_argument("--start-year", type=int, required=True)
     parser.add_argument("--start-week", type=int, default=1)
     parser.add_argument("--end-year", type=int, default=today_iso.year)
@@ -195,7 +222,7 @@ def main():
 
     args = parser.parse_args()
 
-    cfg = load_config(Path(args.config))
+    cfg = load_config(args.env)
     output_path = args.output
     if not output_path:
         ts = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -280,7 +307,6 @@ def main():
                 completed_batches = 0
                 total_batches = len(futures)
 
-                # Report every batch if few, otherwise every 50
                 report_interval = 1 if total_batches <= 50 else 50
 
                 for f in as_completed(futures):

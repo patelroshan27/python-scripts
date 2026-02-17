@@ -4,3 +4,6 @@ yodee_data_loader/data
 __pycache__/
 *.pyc
 results/
+tx_networth_missing_clients_data/.env
+tx_networth_missing_clients_data/.env.prod
+tx_networth_missing_clients_data/.env.qa
