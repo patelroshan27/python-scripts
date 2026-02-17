@@ -21,9 +21,9 @@ limit %s
 """
 
 WEEKS_QUERY_BATCH = """
-select account_id, year, week
+select client_public_id, account_id, year, week
 from tx_data_service.account_summary_weekly
-where account_id IN ({})
+where (client_public_id, account_id) IN ({})
   and (
         (year = %s and week >= %s)
      or (year > %s and year < %s)
@@ -78,15 +78,17 @@ def fetch_client_accounts(conn, batch_size: int):
             last_id = row["account_id"]
 
 
-def fetch_weeks_batch(conn, account_ids: list,
+def fetch_weeks_batch(conn, client_account_pairs: list,
                       start_year: int, start_week: int,
                       end_year: int, end_week: int):
-    if not account_ids:
+    if not client_account_pairs:
         return {}
 
-    placeholders = ", ".join(["%s"] * len(account_ids))
+    placeholders = ", ".join(["(%s, %s)"] * len(client_account_pairs))
     query = WEEKS_QUERY_BATCH.format(placeholders)
-    params = tuple(account_ids) + (
+
+    flattened_pairs = [val for pair in client_account_pairs for val in pair]
+    params = tuple(flattened_pairs) + (
         start_year,
         start_week,
         start_year,
@@ -96,8 +98,10 @@ def fetch_weeks_batch(conn, account_ids: list,
     )
 
     with conn.cursor(dictionary=True) as cur:
+        print(f"Executing WEEKS_QUERY_BATCH with {len(client_account_pairs)} pairs", flush=True)
         cur.execute(query, params)
         rows = cur.fetchall()
+        print(f"WEEKS_QUERY_BATCH returned {len(rows)} rows", flush=True)
 
     results = {}
     for row in rows:
@@ -135,10 +139,10 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
 
         try:
             print(f"[{batch_id}] Fetching weeks for {len(rows)} accounts", flush=True)
-            account_ids = [row["account_id"] for row in rows]
+            client_account_pairs = [(row["client_public_id"], row["account_id"]) for row in rows]
             actual_map = fetch_weeks_batch(
                 conn,
-                account_ids,
+                client_account_pairs,
                 start_year,
                 start_week,
                 end_year,
@@ -178,6 +182,7 @@ def main():
     parser.add_argument("--end-year", type=int, default=today_iso.year)
     parser.add_argument("--end-week", type=int, default=today_iso.week)
     parser.add_argument("--batch-size", type=int, default=5000)
+    parser.add_argument("--worker-batch-size", type=int, default=100)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--semaphore", type=int, default=8)
     parser.add_argument("--max-clients", type=int, default=None)
@@ -214,7 +219,7 @@ def main():
                     print(f"Fetched account {total}: ID {row['account_id']}", flush=True)
                 batch.append(row)
 
-                if len(batch) >= 100:
+                if len(batch) >= args.worker_batch_size:
                     futures.append(
                         executor.submit(
                             worker_task,
