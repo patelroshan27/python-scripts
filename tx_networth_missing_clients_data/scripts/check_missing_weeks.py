@@ -249,8 +249,14 @@ def main():
                 f_out.write('  "missing": [\n')
 
                 first = True
+                completed_batches = 0
+                total_batches = len(futures)
                 for f in as_completed(futures):
                     results = f.result()
+                    completed_batches += 1
+                    if completed_batches % 50 == 0 or completed_batches == total_batches:
+                        print(f"Collected results for {completed_batches}/{total_batches} batches...")
+
                     if results:
                         for res in results:
                             if not first:
