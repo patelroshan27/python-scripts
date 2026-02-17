@@ -1,0 +1,42 @@
+{
+  "account": [
+    {
+      "historicalBalances": [
+        {
+          "date": "2026-01-23",
+          "balance": {
+            "amount": 1600.0,
+            "convertedAmount": 0.0,
+            "currency": "USD"
+          },
+          "asOfDate": "2026-01-23",
+          "dataSourceType": "S",
+          "asset": false
+        },
+        {
+          "date": "2026-01-24",
+          "balance": {
+            "amount": 1600.0,
+            "convertedAmount": 0.0,
+            "currency": "USD"
+          },
+          "asOfDate": "2026-01-24",
+          "dataSourceType": "S",
+          "asset": false
+        },
+        {
+          "date": "2026-01-26",
+          "balance": {
+            "amount": 1600.0,
+            "convertedAmount": 0.0,
+            "currency": "USD"
+          },
+          "asOfDate": "2026-01-26",
+          "dataSourceType": "S",
+          "asset": false
+        }
+      ],
+      "id": 17879496
+    }
+  ]
+}

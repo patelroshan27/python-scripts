@@ -1,0 +1,7 @@
+{
+  "host": "tx-db-prod.cluster-cdnnzwb2udt5.us-east-1.rds.amazonaws.com",
+  "port": 3306,
+  "user": "txro",
+  "password": "19e76e83-d1d8-41af-bfa2-5955b5ee7801",
+  "database": "tx_data_service"
+}

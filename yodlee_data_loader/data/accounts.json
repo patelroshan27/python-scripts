@@ -1,12 +1,12 @@
 {
   "accounts": [
     {
-      "loginName": "john.doe@example.com",
-      "yodleeAccountId": 1234567890
-    },
+      "loginName": "C8HCXB8AD",
+      "yodleeAccountId": 17879496
+    }, 
     {
-      "loginName": "jane.smith@example.com",
-      "yodleeAccountId": 9876543210
+      "loginName": "C8HCYB8AE",
+      "yodleeAccountId": 17876852
     }
   ]
 }
