@@ -124,7 +124,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
         try:
             conn = pool.get_connection()
         except (mysql.connector.Error, socket.gaierror) as err:
-            print(f"Database connection error for batch of {len(rows)} accounts: {err}")
+            print(f"Database connection error for batch of {len(rows)} accounts: {err}", flush=True)
             return []
 
         try:
@@ -152,7 +152,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
                     })
             return results
         except mysql.connector.Error as err:
-            print(f"Database error during query execution for batch of {len(rows)} accounts: {err}")
+            print(f"Database error during query execution for batch of {len(rows)} accounts: {err}", flush=True)
             return []
         finally:
             conn.close()
@@ -217,7 +217,7 @@ def main():
                     batch = []
 
                 if total % 10000 == 0:
-                    print(f"Processed accounts: {total}")
+                    print(f"Fetched accounts: {total}", flush=True)
 
                 if args.max_clients and total >= args.max_clients:
                     break
@@ -237,7 +237,7 @@ def main():
                     )
                 )
 
-            print(f"All tasks submitted. Total accounts: {total}. Waiting for results...")
+            print(f"All tasks submitted. Total accounts: {total}. Waiting for results...", flush=True)
 
             with open(output_path, "w", encoding="utf-8") as f_out:
                 f_out.write("{\n")
@@ -251,11 +251,15 @@ def main():
                 first = True
                 completed_batches = 0
                 total_batches = len(futures)
+
+                # Report every batch if few, otherwise every 50
+                report_interval = 1 if total_batches <= 50 else 50
+
                 for f in as_completed(futures):
                     results = f.result()
                     completed_batches += 1
-                    if completed_batches % 50 == 0 or completed_batches == total_batches:
-                        print(f"Collected results for {completed_batches}/{total_batches} batches...")
+                    if completed_batches % report_interval == 0 or completed_batches == total_batches:
+                        print(f"Collected results for {completed_batches}/{total_batches} batches...", flush=True)
 
                     if results:
                         for res in results:
@@ -266,14 +270,14 @@ def main():
 
                 f_out.write(f'\n  ],\n  "total_pairs": {total}\n}}')
 
-        print(f"Processed clients: {total}")
+        print(f"Processed total accounts: {total}", flush=True)
     finally:
         main_conn.close()
 
     elapsed = time.time() - start_time
-    print(f"Time taken: {elapsed:.2f} seconds for {total} clients")
+    print(f"Time taken: {elapsed:.2f} seconds for {total} accounts", flush=True)
 
-    print(f"Report saved to {output_path}")
+    print(f"Report saved to {output_path}", flush=True)
 
 
 if __name__ == "__main__":
