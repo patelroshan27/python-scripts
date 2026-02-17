@@ -67,8 +67,10 @@ def fetch_client_accounts(conn, batch_size: int):
     last_id = 0
     while True:
         with conn.cursor(dictionary=True) as cur:
+            print(f"Executing CLIENT_ACCOUNT_QUERY with last_id={last_id}, batch_size={batch_size}", flush=True)
             cur.execute(CLIENT_ACCOUNT_QUERY, (last_id, batch_size))
             rows = cur.fetchall()
+            print(f"Query returned {len(rows)} rows", flush=True)
         if not rows:
             break
         for row in rows:
@@ -120,14 +122,19 @@ def expected_weeks(start_year: int, start_week: int,
 def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphore, exp: set,
                 start_year: int, start_week: int, end_year: int, end_week: int,
                 rows: list):
+    batch_id = f"{rows[0]['account_id']}-{rows[-1]['account_id']}"
+    print(f"[{batch_id}] Task started", flush=True)
     with semaphore:
+        print(f"[{batch_id}] Acquired semaphore, getting connection from pool...", flush=True)
         try:
             conn = pool.get_connection()
+            print(f"[{batch_id}] Connection acquired from pool.", flush=True)
         except (mysql.connector.Error, socket.gaierror) as err:
-            print(f"Database connection error for batch of {len(rows)} accounts: {err}", flush=True)
+            print(f"[{batch_id}] Database connection error: {err}", flush=True)
             return []
 
         try:
+            print(f"[{batch_id}] Fetching weeks for {len(rows)} accounts", flush=True)
             account_ids = [row["account_id"] for row in rows]
             actual_map = fetch_weeks_batch(
                 conn,
@@ -137,6 +144,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
                 end_year,
                 end_week,
             )
+            print(f"[{batch_id}] Fetched weeks, processing...", flush=True)
 
             results = []
             for row in rows:
@@ -150,6 +158,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
                         "account_id": account_id,
                         "missing_weeks": [{"year": y, "week": w} for (y, w) in missing],
                     })
+            print(f"[{batch_id}] Batch completed with {len(results)} missing records", flush=True)
             return results
         except mysql.connector.Error as err:
             print(f"Database error during query execution for batch of {len(rows)} accounts: {err}", flush=True)
@@ -187,8 +196,11 @@ def main():
     exp = expected_weeks(args.start_year, args.start_week, args.end_year, args.end_week)
     semaphore = threading.Semaphore(args.semaphore)
 
+    print(f"Initializing connection pool with size {args.workers}...", flush=True)
     pool = get_connection_pool(cfg, args.workers)
+    print("Establishing main connection...", flush=True)
     main_conn = get_connection(cfg)
+    print("Main connection established.", flush=True)
 
     try:
         total = 0
@@ -198,6 +210,8 @@ def main():
             batch = []
             for row in fetch_client_accounts(main_conn, args.batch_size):
                 total += 1
+                if total <= 10 or total % 1000 == 0:
+                    print(f"Fetched account {total}: ID {row['account_id']}", flush=True)
                 batch.append(row)
 
                 if len(batch) >= 100:
