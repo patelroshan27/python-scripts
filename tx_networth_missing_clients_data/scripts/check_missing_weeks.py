@@ -12,7 +12,7 @@ from mysql.connector import pooling
 
 
 CLIENT_ACCOUNT_QUERY = """
-select distinct cim.public_id as client_public_id, a.id as account_id
+select distinct cim.public_id as client_public_id, a.id as account_id, a.public_id as yodlee_id
 from tx_data_service.client_id_mapping cim
 join tx_data_service.account a on cim.id = a.client_id
 where a.id > %s
@@ -24,11 +24,8 @@ WEEKS_QUERY_BATCH = """
 select client_public_id, account_id, year, week
 from tx_data_service.account_summary_weekly
 where (client_public_id, account_id) IN ({})
-  and (
-        (year = %s and week >= %s)
-     or (year > %s and year < %s)
-     or (year = %s and week <= %s)
-  )
+  and (year * 100 + week) >= %s
+  and (year * 100 + week) <= %s
 """
 
 
@@ -89,12 +86,8 @@ def fetch_weeks_batch(conn, client_account_pairs: list,
 
     flattened_pairs = [val for pair in client_account_pairs for val in pair]
     params = tuple(flattened_pairs) + (
-        start_year,
-        start_week,
-        start_year,
-        end_year,
-        end_year,
-        end_week,
+        start_year * 100 + start_week,
+        end_year * 100 + end_week,
     )
 
     with conn.cursor(dictionary=True) as cur:
@@ -105,10 +98,10 @@ def fetch_weeks_batch(conn, client_account_pairs: list,
 
     results = {}
     for row in rows:
-        acc_id = row["account_id"]
-        if acc_id not in results:
-            results[acc_id] = set()
-        results[acc_id].add((row["year"], row["week"]))
+        key = (str(row["client_public_id"]), str(row["account_id"]))
+        if key not in results:
+            results[key] = set()
+        results[key].add((row["year"], row["week"]))
     return results
 
 
@@ -152,14 +145,16 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
 
             results = []
             for row in rows:
-                client_public_id = row["client_public_id"]
-                account_id = row["account_id"]
-                actual = actual_map.get(account_id, set())
+                client_public_id = str(row["client_public_id"])
+                account_id = str(row["account_id"])
+                yodlee_id = row.get("yodlee_id")
+                actual = actual_map.get((client_public_id, account_id), set())
                 missing = sorted(list(exp - actual))
                 if missing:
                     results.append({
                         "client_public_id": client_public_id,
                         "account_id": account_id,
+                        "yodlee_id": yodlee_id,
                         "missing_weeks": [{"year": y, "week": w} for (y, w) in missing],
                     })
             print(f"[{batch_id}] Batch completed with {len(results)} missing records", flush=True)
