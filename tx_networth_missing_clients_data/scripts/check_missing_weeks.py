@@ -132,7 +132,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
 
         try:
             print(f"[{batch_id}] Fetching weeks for {len(rows)} accounts", flush=True)
-            client_account_pairs = [(row["client_public_id"], row["account_id"]) for row in rows]
+            client_account_pairs = [(row["public_id"], row["account_id"]) for row in rows]
             actual_map = fetch_weeks_batch(
                 conn,
                 client_account_pairs,
@@ -145,7 +145,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
 
             results = []
             for row in rows:
-                client_public_id = str(row["client_public_id"])
+                client_public_id = str(row["public_id"])
                 account_id = str(row["account_id"])
                 yodlee_id = row.get("yodlee_id")
                 actual = actual_map.get((client_public_id, account_id), set())
