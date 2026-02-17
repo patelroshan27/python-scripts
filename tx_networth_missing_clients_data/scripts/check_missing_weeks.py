@@ -96,12 +96,16 @@ def fetch_weeks_batch(conn, client_account_pairs: list,
         rows = cur.fetchall()
         print(f"WEEKS_QUERY_BATCH returned {len(rows)} rows", flush=True)
 
+    if rows:
+        first = rows[0]
+        print(f"DEBUG: Row types - client_public_id: {type(first['client_public_id'])}, account_id: {type(first['account_id'])}, year: {type(first['year'])}, week: {type(first['week'])}", flush=True)
+
     results = {}
     for row in rows:
         key = (str(row["client_public_id"]), str(row["account_id"]))
         if key not in results:
             results[key] = set()
-        results[key].add((row["year"], row["week"]))
+        results[key].add((int(row["year"]), int(row["week"])))
     return results
 
 
@@ -132,7 +136,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
 
         try:
             print(f"[{batch_id}] Fetching weeks for {len(rows)} accounts", flush=True)
-            client_account_pairs = [(row["public_id"], row["account_id"]) for row in rows]
+            client_account_pairs = [(row["client_public_id"], row["account_id"]) for row in rows]
             actual_map = fetch_weeks_batch(
                 conn,
                 client_account_pairs,
@@ -145,7 +149,7 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
 
             results = []
             for row in rows:
-                client_public_id = str(row["public_id"])
+                client_public_id = str(row["client_public_id"])
                 account_id = str(row["account_id"])
                 yodlee_id = row.get("yodlee_id")
                 actual = actual_map.get((client_public_id, account_id), set())
@@ -157,7 +161,13 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
                         "yodlee_id": yodlee_id,
                         "missing_weeks": [{"year": y, "week": w} for (y, w) in missing],
                     })
-            print(f"[{batch_id}] Batch completed with {len(results)} missing records", flush=True)
+            if not results and rows:
+                sample_acc = str(rows[0]["account_id"])
+                sample_client = str(rows[0]["client_public_id"])
+                sample_actual = actual_map.get((sample_client, sample_acc), set())
+                print(f"[{batch_id}] No missing records. Sample account {sample_acc} had {len(sample_actual)} unique weeks.", flush=True)
+            else:
+                print(f"[{batch_id}] Batch completed with {len(results)} missing records", flush=True)
             return results
         except mysql.connector.Error as err:
             print(f"Database error during query execution for batch of {len(rows)} accounts: {err}", flush=True)
@@ -194,6 +204,10 @@ def main():
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     exp = expected_weeks(args.start_year, args.start_week, args.end_year, args.end_week)
+    print(f"Expected weeks count: {len(exp)}", flush=True)
+    sample_exp = sorted(list(exp))[:5]
+    print(f"Sample expected weeks: {sample_exp}", flush=True)
+
     semaphore = threading.Semaphore(args.semaphore)
 
     print(f"Initializing connection pool with size {args.workers}...", flush=True)
