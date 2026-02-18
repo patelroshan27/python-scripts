@@ -327,10 +327,20 @@ def main():
                             all_missing[cid].append(acc_info)
 
                 for cid, accounts in all_missing.items():
+                    latest_period = (0, 0)
+                    for acc in accounts:
+                        for m in acc["missing_months"]:
+                            period = (m["year"], m["month"])
+                            if period > latest_period:
+                                latest_period = period
+
+                    last_impacted_date = f"{latest_period[0]:04d}-{latest_period[1]:02d}-01" if latest_period != (0, 0) else None
+
                     if not first:
                         f_out.write(",\n")
                     client_group = {
                         "client_public_id": cid,
+                        "lastImpactedDate": last_impacted_date,
                         "accounts": accounts
                     }
                     f_out.write("    " + json.dumps(client_group))
@@ -340,8 +350,8 @@ def main():
                 f_out.write(f'  "total_unique_clients_impacted": {len(impacted_clients)},\n')
                 f_out.write(f'  "total_unique_accounts_impacted": {len(impacted_accounts)},\n')
                 f_out.write(f'  "total_clients_processed": {len(processed_clients)},\n')
-                f_out.write(f'  "total_accounts_processed": {total}\n')
-                f_out.write(f'}}')
+                f_out.write(f'  "total_accounts_processed": {total},\n')
+                f_out.write(f'  "total_pairs": {total}\n}}')
 
         print(f"Processed total accounts: {total}", flush=True)
     finally:
