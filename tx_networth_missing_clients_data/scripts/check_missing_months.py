@@ -309,6 +309,7 @@ def main():
 
                 report_interval = 1 if total_batches <= 50 else 50
 
+                all_missing = {}
                 for f in as_completed(futures):
                     results = f.result()
                     completed_batches += 1
@@ -317,12 +318,23 @@ def main():
 
                     if results:
                         for res in results:
-                            impacted_clients.add(res["client_public_id"])
+                            cid = res["client_public_id"]
+                            impacted_clients.add(cid)
                             impacted_accounts.add(res["account_id"])
-                            if not first:
-                                f_out.write(",\n")
-                            f_out.write("    " + json.dumps(res))
-                            first = False
+                            if cid not in all_missing:
+                                all_missing[cid] = []
+                            acc_info = {k: v for k, v in res.items() if k != "client_public_id"}
+                            all_missing[cid].append(acc_info)
+
+                for cid, accounts in all_missing.items():
+                    if not first:
+                        f_out.write(",\n")
+                    client_group = {
+                        "client_public_id": cid,
+                        "accounts": accounts
+                    }
+                    f_out.write("    " + json.dumps(client_group))
+                    first = False
 
                 f_out.write(f'\n  ],\n')
                 f_out.write(f'  "total_unique_clients_impacted": {len(impacted_clients)},\n')
