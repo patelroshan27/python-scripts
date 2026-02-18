@@ -245,7 +245,6 @@ def main():
 
     try:
         total = 0
-        processed_clients = set()
         impacted_clients = set()
         impacted_accounts = set()
         futures = []
@@ -254,7 +253,6 @@ def main():
             batch = []
             for row in fetch_client_accounts(main_conn, args.batch_size):
                 total += 1
-                processed_clients.add(row["client_public_id"])
                 if total <= 10 or total % 1000 == 0:
                     print(f"Fetched account {total}: ID {row['account_id']}", flush=True)
                 batch.append(row)
@@ -305,7 +303,7 @@ def main():
                 f_out.write(f'  "start_week": {args.start_week},\n')
                 f_out.write(f'  "end_year": {args.end_year},\n')
                 f_out.write(f'  "end_week": {args.end_week},\n')
-                f_out.write('  "missing_weeks": [\n')
+                f_out.write('  "data": [\n')
 
                 first = True
                 completed_batches = 0
@@ -354,10 +352,8 @@ def main():
 
                 f_out.write(f'\n  ],\n')
                 f_out.write(f'  "total_unique_clients_impacted": {len(impacted_clients)},\n')
-                f_out.write(f'  "total_unique_accounts_impacted": {len(impacted_accounts)},\n')
-                f_out.write(f'  "total_clients_processed": {len(processed_clients)},\n')
-                f_out.write(f'  "total_accounts_processed": {total},\n')
-                f_out.write(f'  "total_pairs": {total}\n}}')
+                f_out.write(f'  "total_unique_accounts_impacted": {len(impacted_accounts)}\n')
+                f_out.write(f'}}')
 
         print(f"Processed total accounts: {total}", flush=True)
     finally:
