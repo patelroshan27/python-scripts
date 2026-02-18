@@ -340,8 +340,8 @@ def main():
                 f_out.write(f'  "total_unique_clients_impacted": {len(impacted_clients)},\n')
                 f_out.write(f'  "total_unique_accounts_impacted": {len(impacted_accounts)},\n')
                 f_out.write(f'  "total_clients_processed": {len(processed_clients)},\n')
-                f_out.write(f'  "total_accounts_processed": {total},\n')
-                f_out.write(f'  "total_pairs": {total}\n}}')
+                f_out.write(f'  "total_accounts_processed": {total}\n')
+                f_out.write(f'}}')
 
         print(f"Processed total accounts: {total}", flush=True)
     finally:

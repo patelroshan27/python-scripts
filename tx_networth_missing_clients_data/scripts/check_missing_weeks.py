@@ -232,7 +232,7 @@ def main():
 
     exp = expected_weeks(args.start_year, args.start_week, args.end_year, args.end_week)
     print(f"Expected weeks count: {len(exp)}", flush=True)
-    sample_exp = sorted(list(exp))[:5]
+    sample_exp = sorted(list(exp))
     print(f"Sample expected weeks: {sample_exp}", flush=True)
 
     semaphore = threading.Semaphore(args.semaphore)
@@ -344,8 +344,8 @@ def main():
                 f_out.write(f'  "total_unique_clients_impacted": {len(impacted_clients)},\n')
                 f_out.write(f'  "total_unique_accounts_impacted": {len(impacted_accounts)},\n')
                 f_out.write(f'  "total_clients_processed": {len(processed_clients)},\n')
-                f_out.write(f'  "total_accounts_processed": {total},\n')
-                f_out.write(f'  "total_pairs": {total}\n}}')
+                f_out.write(f'  "total_accounts_processed": {total}\n')
+                f_out.write(f'}}')
 
         print(f"Processed total accounts: {total}", flush=True)
     finally:
