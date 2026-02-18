@@ -241,12 +241,16 @@ def main():
 
     try:
         total = 0
+        processed_clients = set()
+        impacted_clients = set()
+        impacted_accounts = set()
         futures = []
 
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
             batch = []
             for row in fetch_client_accounts(main_conn, args.batch_size):
                 total += 1
+                processed_clients.add(row["client_public_id"])
                 if total <= 10 or total % 1000 == 0:
                     print(f"Fetched account {total}: ID {row['account_id']}", flush=True)
                 batch.append(row)
@@ -313,12 +317,19 @@ def main():
 
                     if results:
                         for res in results:
+                            impacted_clients.add(res["client_public_id"])
+                            impacted_accounts.add(res["account_id"])
                             if not first:
                                 f_out.write(",\n")
                             f_out.write("    " + json.dumps(res))
                             first = False
 
-                f_out.write(f'\n  ],\n  "total_pairs": {total}\n}}')
+                f_out.write(f'\n  ],\n')
+                f_out.write(f'  "total_unique_clients_impacted": {len(impacted_clients)},\n')
+                f_out.write(f'  "total_unique_accounts_impacted": {len(impacted_accounts)},\n')
+                f_out.write(f'  "total_clients_processed": {len(processed_clients)},\n')
+                f_out.write(f'  "total_accounts_processed": {total},\n')
+                f_out.write(f'  "total_pairs": {total}\n}}')
 
         print(f"Processed total accounts: {total}", flush=True)
     finally:
