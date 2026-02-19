@@ -180,7 +180,14 @@ def worker_task(pool: pooling.MySQLConnectionPool, semaphore: threading.Semaphor
                 account_id = str(row["account_id"])
                 yodlee_id = row.get("yodlee_id")
                 actual = actual_map.get((client_public_id, account_id), set())
-                missing = sorted(list(exp - actual))
+
+                account_exp = exp
+                if actual:
+                    min_actual = min(actual)
+                    if min_actual > (start_year, start_week):
+                        account_exp = {w for w in exp if w >= min_actual}
+
+                missing = sorted(list(account_exp - actual))
                 if missing:
                     results.append({
                         "client_public_id": client_public_id,
