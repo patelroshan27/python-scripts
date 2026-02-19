@@ -239,8 +239,6 @@ def main():
 
     exp = expected_weeks(args.start_year, args.start_week, args.end_year, args.end_week)
     print(f"Expected weeks count: {len(exp)}", flush=True)
-    sample_exp = sorted(list(exp))[:5]
-    print(f"Sample expected weeks: {sample_exp}", flush=True)
 
     semaphore = threading.Semaphore(args.semaphore)
 

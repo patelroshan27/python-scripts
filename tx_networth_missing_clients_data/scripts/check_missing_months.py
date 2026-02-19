@@ -235,8 +235,6 @@ def main():
 
     exp = expected_months(args.start_year, args.start_month, args.end_year, args.end_month)
     print(f"Expected months count: {len(exp)}", flush=True)
-    sample_exp = sorted(list(exp))[:5]
-    print(f"Sample expected months: {sample_exp}", flush=True)
 
     semaphore = threading.Semaphore(args.semaphore)
 
