@@ -12,8 +12,14 @@ Edit `config/qa.json` or `config/prod.json` with MySQL credentials.
 
 ## Run
 ```bash
-python3 scripts/check_missing_weeks.py --start-year 2026 --start-week 1 --end-year 2026 --end-week 5 --batch-size 5000 --limit 200
+python3 scripts/check_missing_weeks.py --start-year 2025 --start-week 1 --end-year 2026 --end-week 8 --workers 10 --semaphore 10 --batch-size 2000 --env qa --max-clients 5000
 ```
+
+## Run
+```bash
+python3 scripts/check_missing_months.py --start-year 2025 --start-month 1 --end-year 2026 --end-month 1 --workers 10 --semaphore 10 --batch-size 2000 --env qa --max-clients 5000
+```
+
 
 ### Notes
 - The script **paginates** through accounts using `a.id > last_id` and `--batch-size`.
